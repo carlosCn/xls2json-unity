@@ -174,6 +174,19 @@ def ensure_writeable(path, override):
                 return True
     return True
 
+def bail(error_code):
+    print
+    print 'Usage: xls2json [argumemts]'
+    print
+    print 'Arguments:'
+    print '--source-dir [path]   (Required) Specifies the directory to search for XLS files.'
+    print '--data-dir [path]     (Required) Specifies the directory to use for JSON output.'
+    print '--code-dir [path]     Specifies the directory to output C# POCO classes to.'
+    print '--rebuild-all         Forces xls2json to rebuild all XLS data in source-dir.'
+    print '--overwrite-readonly  Allows xls2json to overwrite read-only output files.'
+    print '--verbose             Enables verbose/debug output.'
+    exit(error_code)
+
 def main():
     result = 0;
 
@@ -186,8 +199,7 @@ def main():
                                     'overwrite-readonly',
                                     'verbose'])
     except getopt.GetoptError as err:
-        print str(err)
-        sys.exit(2)
+        bail(2)
 
     source_dir = None
     data_dir = None
@@ -208,6 +220,11 @@ def main():
             verbose = True
         elif o == '--overwrite-readonly':
             overwrite_readonly = True
+
+    if source_dir == None:
+        bail(2)
+    if data_dir == None:
+        bail(2)
 
     for file_path in os.listdir(source_dir):
 
@@ -259,22 +276,23 @@ def main():
             data_file.close()
 
         # attempt to write code
-        if rebuild_all or code_time < source_time:
+        if code_dir != None:
+            if rebuild_all or code_time < source_time:
 
-            # make sure we can write it
-            if not ensure_writeable(code_path, overwrite_readonly):
-                result = -1
-                continue
+                # make sure we can write it
+                if not ensure_writeable(code_path, overwrite_readonly):
+                    result = -1
+                    continue
 
-            # generate C# source
-            cs_impl = build_cs_class(file_name, fields)
-            if verbose:
-                print cs_impl
+                # generate C# source
+                cs_impl = build_cs_class(file_name, fields)
+                if verbose:
+                    print cs_impl
 
-            # write it out
-            code_file = open(code_path, 'w')
-            code_file.write(cs_impl)
-            code_file.close()
+                # write it out
+                code_file = open(code_path, 'w')
+                code_file.write(cs_impl)
+                code_file.close()
 
     return result
 
